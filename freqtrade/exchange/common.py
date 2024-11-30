@@ -58,6 +58,7 @@ SUPPORTED_EXCHANGES = [
     "gate",
     "htx",
     "kraken",
+    "mexc",
     "okx",
 ]
 
