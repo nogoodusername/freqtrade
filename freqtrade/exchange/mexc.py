@@ -1,12 +1,13 @@
 import logging
-
 from datetime import datetime, timedelta
 from typing import Optional
 
 from freqtrade.exchange import Exchange
-from freqtrade.util.datetime_helpers import dt_now, dt_ts
+from freqtrade.util.datetime_helpers import dt_now
+
 
 logger = logging.getLogger(__name__)
+
 
 class Mexc(Exchange):
     """
@@ -24,6 +25,7 @@ class Mexc(Exchange):
         :param pair: Pair for the query
         :param since: Starting time for the query
         """
+
         # On mexc, since cannot be more than 7 days.
         # we therefore can only get orders which are within 7 days.
         orders = []
