@@ -360,8 +360,9 @@ class Backtesting:
             )
             # Combine data to avoid combining the data per trade.
             unavailable_pairs = []
+            uses_leverage_tiers = self.exchange.get_option("uses_leverage_tiers", True)
             for pair in self.pairlists.whitelist:
-                if pair not in self.exchange._leverage_tiers:
+                if uses_leverage_tiers and pair not in self.exchange._leverage_tiers:
                     unavailable_pairs.append(pair)
                     continue
 
@@ -714,7 +715,7 @@ class Backtesting:
                     exchange=self.exchange,
                     wallets=self.wallets,
                     stake_currency=self.config["stake_currency"],
-                    dry_run=self.config["dry_run"],
+                    dry_run=True,
                 )
             if not (order.ft_order_side == trade.exit_side and order.safe_amount == trade.amount):
                 self._call_adjust_stop(current_date, trade, order.ft_price)
@@ -1792,6 +1793,7 @@ class Backtesting:
                     dt_appendix,
                     market_change_data=combined_res,
                     analysis_results=self.analysis_results,
+                    strategy_files={s.get_strategy_name(): s.__file__ for s in self.strategylist},
                 )
 
         # Results may be mixed up now. Sort them so they follow --strategy-list order.

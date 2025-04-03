@@ -169,7 +169,7 @@ def test_telegram_init(default_conf, mocker, caplog) -> None:
         "['stats'], ['daily'], ['weekly'], ['monthly'], "
         "['count'], ['locks'], ['delete_locks', 'unlock'], "
         "['reload_conf', 'reload_config'], ['show_conf', 'show_config'], "
-        "['stopbuy', 'stopentry'], ['whitelist'], ['blacklist'], "
+        "['pause', 'stopbuy', 'stopentry'], ['whitelist'], ['blacklist'], "
         "['bl_delete', 'blacklist_delete'], "
         "['logs'], ['edge'], ['health'], ['help'], ['version'], ['marketdir'], "
         "['order'], ['list_custom_data'], ['tg_info']]"
@@ -1222,15 +1222,15 @@ async def test_stop_handle_already_stopped(default_conf, update, mocker) -> None
     assert "already stopped" in msg_mock.call_args_list[0][0][0]
 
 
-async def test_stopbuy_handle(default_conf, update, mocker) -> None:
+async def test_pause_handle(default_conf, update, mocker) -> None:
     telegram, freqtradebot, msg_mock = get_telegram_testobject(mocker, default_conf)
 
-    assert freqtradebot.config["max_open_trades"] != 0
-    await telegram._stopentry(update=update, context=MagicMock())
-    assert freqtradebot.config["max_open_trades"] == 0
+    assert freqtradebot.state == State.RUNNING
+    await telegram._pause(update=update, context=MagicMock())
+    assert freqtradebot.state == State.PAUSED
     assert msg_mock.call_count == 1
     assert (
-        "No more entries will occur from now. Run /reload_config to reset."
+        "paused, no more entries will occur from now. Run /start to enable entries."
         in msg_mock.call_args_list[0][0][0]
     )
 
@@ -2903,9 +2903,7 @@ async def test_telegram_list_custom_data(default_conf_usdt, update, ticker, fee,
     context.args = ["1"]
     await telegram._list_custom_data(update=update, context=context)
     assert msg_mock.call_count == 1
-    assert (
-        "Didn't find any custom-data entries for Trade ID: `1`" in msg_mock.call_args_list[0][0][0]
-    )
+    assert "No custom-data found for Trade ID: 1." in msg_mock.call_args_list[0][0][0]
     msg_mock.reset_mock()
 
     # Add some custom data
@@ -2918,11 +2916,10 @@ async def test_telegram_list_custom_data(default_conf_usdt, update, ticker, fee,
     assert msg_mock.call_count == 3
     assert "Found custom-data entries: " in msg_mock.call_args_list[0][0][0]
     assert (
-        "*Key:* `test_int`\n*ID:* `1`\n*Trade ID:* `1`\n*Type:* `int`\n*Value:* `1`\n*Create Date:*"
+        "*Key:* `test_int`\n*Type:* `int`\n*Value:* `1`\n*Create Date:*"
     ) in msg_mock.call_args_list[1][0][0]
     assert (
-        "*Key:* `test_dict`\n*ID:* `2`\n*Trade ID:* `1`\n*Type:* `dict`\n"
-        '*Value:* `{"test": "dict"}`\n*Create Date:* `'
+        "*Key:* `test_dict`\n*Type:* `dict`\n*Value:* `{'test': 'dict'}`\n*Create Date:* `"
     ) in msg_mock.call_args_list[2][0][0]
 
     msg_mock.reset_mock()

@@ -178,6 +178,7 @@ class Telegram(RPCHandler):
         #       problem in _help()).
         valid_keys: list[str] = [
             r"/start$",
+            r"/pause$",
             r"/stop$",
             r"/status$",
             r"/status table$",
@@ -293,7 +294,7 @@ class Telegram(RPCHandler):
             CommandHandler(["unlock", "delete_locks"], self._delete_locks),
             CommandHandler(["reload_config", "reload_conf"], self._reload_config),
             CommandHandler(["show_config", "show_conf"], self._show_config),
-            CommandHandler(["stopbuy", "stopentry"], self._stopentry),
+            CommandHandler(["stopbuy", "stopentry", "pause"], self._pause),
             CommandHandler("whitelist", self._whitelist),
             CommandHandler("blacklist", self._blacklist),
             CommandHandler(["blacklist_delete", "bl_delete"], self._blacklist_delete),
@@ -1269,15 +1270,15 @@ class Telegram(RPCHandler):
         await self._send_msg(f"Status: `{msg['status']}`")
 
     @authorized_only
-    async def _stopentry(self, update: Update, context: CallbackContext) -> None:
+    async def _pause(self, update: Update, context: CallbackContext) -> None:
         """
-        Handler for /stop_buy.
-        Sets max_open_trades to 0 and gracefully sells all open trades
+        Handler for /stop_buy /stop_entry and /pause.
+        Sets bot state to paused
         :param bot: telegram bot
         :param update: message update
         :return: None
         """
-        msg = self._rpc._rpc_stopentry()
+        msg = self._rpc._rpc_pause()
         await self._send_msg(f"Status: `{msg['status']}`")
 
     @authorized_only
@@ -1829,6 +1830,7 @@ class Telegram(RPCHandler):
             "_Bot Control_\n"
             "------------\n"
             "*/start:* `Starts the trader`\n"
+            "*/pause:* `Pause the new entries for trader, but handles open trades gracefully`\n"
             "*/stop:* `Stops the trader`\n"
             "*/stopentry:* `Stops entering, but handles open trades gracefully` \n"
             "*/forceexit <trade_id>|all:* `Instantly exits the given trade or all trades, "
@@ -1981,16 +1983,17 @@ class Telegram(RPCHandler):
             results = self._rpc._rpc_list_custom_data(trade_id, key)
             messages = []
             if len(results) > 0:
-                messages.append("Found custom-data entr" + ("ies: " if len(results) > 1 else "y: "))
-                for result in results:
+                trade_custom_data = results[0]["custom_data"]
+                messages.append(
+                    "Found custom-data entr" + ("ies: " if len(trade_custom_data) > 1 else "y: ")
+                )
+                for custom_data in trade_custom_data:
                     lines = [
-                        f"*Key:* `{result['cd_key']}`",
-                        f"*ID:* `{result['id']}`",
-                        f"*Trade ID:* `{result['ft_trade_id']}`",
-                        f"*Type:* `{result['cd_type']}`",
-                        f"*Value:* `{result['cd_value']}`",
-                        f"*Create Date:* `{format_date(result['created_at'])}`",
-                        f"*Update Date:* `{format_date(result['updated_at'])}`",
+                        f"*Key:* `{custom_data['key']}`",
+                        f"*Type:* `{custom_data['type']}`",
+                        f"*Value:* `{custom_data['value']}`",
+                        f"*Create Date:* `{format_date(custom_data['created_at'])}`",
+                        f"*Update Date:* `{format_date(custom_data['updated_at'])}`",
                     ]
                     # Filter empty lines using list-comprehension
                     messages.append("\n".join([line for line in lines if line]))
