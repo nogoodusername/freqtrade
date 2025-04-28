@@ -293,6 +293,7 @@ class FreqtradeBot(LoggingMixin):
             trades = Trade.get_open_trades()
             # First process current opened trades (positions)
             self.exit_positions(trades)
+            Trade.commit()
 
         # Check if we need to adjust our current positions before attempting to enter new trades.
         if self.strategy.position_adjustment_enable:
@@ -759,12 +760,14 @@ class FreqtradeBot(LoggingMixin):
         current_exit_profit = trade.calc_profit_ratio(current_exit_rate)
 
         min_entry_stake = self.exchange.get_min_pair_stake_amount(
-            trade.pair, current_entry_rate, 0.0
+            trade.pair, current_entry_rate, 0.0, trade.leverage
         )
         min_exit_stake = self.exchange.get_min_pair_stake_amount(
-            trade.pair, current_exit_rate, self.strategy.stoploss
+            trade.pair, current_exit_rate, self.strategy.stoploss, trade.leverage
         )
-        max_entry_stake = self.exchange.get_max_pair_stake_amount(trade.pair, current_entry_rate)
+        max_entry_stake = self.exchange.get_max_pair_stake_amount(
+            trade.pair, current_entry_rate, trade.leverage
+        )
         stake_available = self.wallets.get_available_stake_amount()
         logger.debug(f"Calling adjust_trade_position for pair {trade.pair}")
         stake_amount, order_tag = self.strategy._adjust_trade_position_internal(
